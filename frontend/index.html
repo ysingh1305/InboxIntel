@@ -145,7 +145,7 @@
     <script>
         const API_BASE = '';
 
-        // Helpers
+        
         function show(el, on=true){ el.classList[on ? 'remove' : 'add']('hidden'); }
         function setError(msg){
             const e = document.getElementById('errorSection');
@@ -154,7 +154,7 @@
             show(e, true);
         }
 
-        // Check authentication status on load
+       
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('status') === 'success') {
@@ -222,7 +222,7 @@
             const days = parseInt(document.getElementById('daysSelect').value, 10) || 7;
             const generateBtn = document.getElementById('generateBtn');
             
-            // Show loading, hide error and report
+           
             setError('');
             show(document.getElementById('loadingSection'), true);
             show(document.getElementById('reportSection'), false);
@@ -237,7 +237,7 @@
                 });
                 const data = await response.json();
 
-                // IMPORTANT: our backend always returns 200 with success flag
+              
                 if (!data?.success || !data?.report) {
                     setError(data?.error?.details || data?.error || 'Report generation failed');
                     return;
@@ -258,20 +258,20 @@
         function displayReport(report) {
             const r = report || {};
 
-            // Update stats (guarded)
+            
             document.getElementById('totalEmails').textContent = r.total_emails ?? 0;
             document.getElementById('periodDays').textContent = r.period_days ?? 0;
             
-            // Update sentiment (guarded + class swap)
+          
             const sentiment = (r.sentiment || 'neutral').toLowerCase();
             const sentimentBadge = document.getElementById('sentimentBadge');
             sentimentBadge.textContent = sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
             sentimentBadge.className = `sentiment sentiment-${['positive','neutral','negative'].includes(sentiment) ? sentiment : 'neutral'}`;
             
-            // Update summary
+           
             document.getElementById('summaryText').textContent = r.summary || 'No summary available.';
             
-            // Update topics
+            
             const topicsList = document.getElementById('topicsList');
             topicsList.innerHTML = '';
             if (Array.isArray(r.important_topics) && r.important_topics.length) {
@@ -285,7 +285,7 @@
                 topicsList.innerHTML = '<div class="list-item">No topics identified.</div>';
             }
             
-            // Update action items
+         
             const actionsList = document.getElementById('actionsList');
             actionsList.innerHTML = '';
             if (Array.isArray(r.action_items) && r.action_items.length) {
@@ -299,7 +299,7 @@
                 actionsList.innerHTML = '<div class="list-item">No action items found.</div>';
             }
             
-            // Update contacts
+      
             const contactsList = document.getElementById('contactsList');
             contactsList.innerHTML = '';
             if (Array.isArray(r.key_contacts) && r.key_contacts.length) {
@@ -313,7 +313,7 @@
                 contactsList.innerHTML = '<div class="list-item">No key contacts identified.</div>';
             }
             
-            // Show report
+          
             show(document.getElementById('reportSection'), true);
         }
     </script>
