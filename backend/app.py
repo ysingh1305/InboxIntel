@@ -16,7 +16,7 @@ load_dotenv()
 app = Flask(__name__, static_folder='../frontend')
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
-# Session configuration for local development
+
 app.config['SESSION_COOKIE_SAMESITE'] = None
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = False
@@ -30,25 +30,25 @@ CORS(
     expose_headers=['Set-Cookie']
 )
 
-# MongoDB setup
+
 mongo_client = MongoClient(os.getenv('MONGODB_URI'))
 db = mongo_client['email_reports']
 users_collection = db['users']
 reports_collection = db['reports']
 oauth_states_collection = db['oauth_states']
 
-# AWS Lambda client (with retries + read timeout)
+
 lambda_client = boto3.client(
     'lambda',
     region_name=os.getenv('AWS_REGION', 'us-east-1'),
     config=Config(read_timeout=60, retries={'max_attempts': 3})
 )
 
-# Gmail API setup
+
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CLIENT_SECRETS_FILE = 'credentials.json'
 
-# Disable HTTPS requirement for local development
+
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
@@ -72,7 +72,7 @@ def login():
             prompt='consent'
         )
 
-        # Store state in MongoDB instead of session
+     
         oauth_states_collection.insert_one({
             'state': state,
             'created_at': datetime.utcnow(),
@@ -108,7 +108,7 @@ def oauth2callback():
 
         print("✓ Found valid state in MongoDB")
 
-        # Delete the used state
+     
         oauth_states_collection.delete_one({'_id': state_doc['_id']})
 
         flow = Flow.from_client_secrets_file(
@@ -118,18 +118,17 @@ def oauth2callback():
             redirect_uri='http://localhost:5000/oauth2callback'
         )
 
-        # Fetch token
+
         flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
 
-        # Get user email
+      
         service = build('gmail', 'v1', credentials=credentials)
         profile = service.users().getProfile(userId='me').execute()
         user_email = profile['emailAddress']
 
         print(f"✓ Successfully authenticated: {user_email}")
 
-        # Store credentials in MongoDB
         user_data = {
             'email': user_email,
             'credentials': {
@@ -224,7 +223,6 @@ def generate_report():
             Payload=json.dumps(payload)
         )
 
-        # If Lambda itself threw a runtime error
         if response.get('FunctionError'):
             raw_err = response['Payload'].read() or b'{}'
             err_payload = try_json(json.loads(raw_err))
@@ -234,12 +232,11 @@ def generate_report():
                 'error': {'type': 'LambdaFunctionError', 'details': err_payload}
             }), 200
 
-        # Normal path
+  
         raw = response['Payload'].read() or b'{}'
         parsed = json.loads(raw)
         status_code = parsed.get('statusCode', 200)
 
-        # Body can be an object OR a stringified JSON. Normalize it.
         result_body = try_json(parsed.get('body', parsed))
 
         if status_code != 200:
@@ -250,11 +247,10 @@ def generate_report():
                 'error': {'type': 'ReportGenerationFailed', 'details': result_body}
             }), 200
 
-        # Defensive: ensure we return an object as report
+      
         if isinstance(result_body, str):
             result_body = {'summary': result_body}
 
-        # Store report
         report_data = {
             'user_email': user_email,
             'report': result_body,
