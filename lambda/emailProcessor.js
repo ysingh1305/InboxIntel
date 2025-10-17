@@ -1,20 +1,18 @@
-// lambda/emailProcessor.js
+
 const { google } = require('googleapis');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const OpenAI = require('openai');
 
-// === AWS + OpenAI clients
 const REGION = process.env.AWS_REGION || 'us-east-1';
 const s3Client = new S3Client({ region: REGION });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// === Config
+
 const MODEL_ID = 'gpt-4o-mini'; // or 'gpt-4o' for higher quality
 const MAX_INPUT_TOKENS_BUDGET = Number(process.env.MAX_INPUT_TOKENS_BUDGET || 7000);
 const PER_EMAIL_SNIPPET_LIMIT = 220;
 const MAX_EMAILS_FOR_MODEL = 40;
 
-// ---------- helpers ----------
 function pick(headers, name) {
   const h = headers?.find(x => x.name?.toLowerCase() === name.toLowerCase());
   return h?.value || '';
@@ -107,7 +105,6 @@ function validateShape(obj) {
   };
 }
 
-// ---------- handler ----------
 exports.handler = async (event) => {
   try {
     console.log('Event received:', JSON.stringify({ user_email: event.user_email, days: event.days }));
@@ -132,7 +129,7 @@ exports.handler = async (event) => {
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Gmail query
+ 
     const afterDate = new Date();
     afterDate.setDate(afterDate.getDate() - Number(days));
     const afterTimestamp = Math.floor(afterDate.getTime() / 1000);
@@ -160,7 +157,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Fetch details
     const details = await Promise.all(
       messageIds.map(async ({ id }) => {
         try {
@@ -182,7 +178,6 @@ exports.handler = async (event) => {
     const emails = details.filter(Boolean);
     console.log(`✓ Successfully fetched ${emails.length} email details`);
 
-    // Prompt budgeting
     const sorted = [...emails].sort((a, b) => (b.snippet?.length || 0) - (a.snippet?.length || 0));
     let used = [];
     let approxTokens = 0;
@@ -199,7 +194,7 @@ exports.handler = async (event) => {
 
     const prompt = buildPrompt(used, days);
 
-    // ---- OpenAI call: force JSON output ----
+  
     const response = await openai.chat.completions.create({
       model: MODEL_ID,
       temperature: 0,
@@ -215,7 +210,7 @@ exports.handler = async (event) => {
     });
 
     const raw = response?.choices?.[0]?.message?.content?.trim() || '';
-    console.log('📝 Raw model output (truncated 500 chars):', raw.slice(0, 500));
+    console.log('Raw model output (truncated 500 chars):', raw.slice(0, 500));
 
     let parsed;
     try {
@@ -242,7 +237,7 @@ exports.handler = async (event) => {
       region: REGION
     };
 
-    // Save to S3
+
     const key = `reports/${user_email}/${Date.now()}.json`;
     await s3Client.send(new PutObjectCommand({
       Bucket: process.env.S3_BUCKET_NAME,
