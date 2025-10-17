@@ -1,0 +1,11 @@
+{
+  "name": "email-processor-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to process emails",
+  "main": "emailProcessor.js",
+  "dependencies": {
+    "googleapis": "^128.0.0",
+    "openai": "^4.56.0",
+    "@aws-sdk/client-s3": "^3.450.0"
+  }
+}

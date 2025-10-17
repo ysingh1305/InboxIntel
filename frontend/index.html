@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Report Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card {
+            background: white; border-radius: 16px; padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin-bottom: 20px;
+        }
+        h1 { color: #333; margin-bottom: 10px; font-size: 32px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .login-section { text-align: center; padding: 40px 0; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 14px 32px; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .user-info {
+            background: #f7f7f7; padding: 20px; border-radius: 8px; margin-bottom: 30px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-email { font-weight: 600; color: #333; }
+        .logout-btn { background: #e74c3c; padding: 8px 16px; font-size: 14px; }
+        .report-controls { margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; }
+        select, input {
+            width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 16px; transition: border-color 0.3s;
+        }
+        select:focus, input:focus { outline: none; border-color: #667eea; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .report-section { margin-top: 30px; }
+        .report-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 20px; border-radius: 8px 8px 0 0;
+        }
+        .report-body { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
+        .stat { display: inline-block; margin-right: 20px; font-size: 14px; }
+        .summary { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; line-height: 1.6; }
+        .section-title { font-size: 18px; font-weight: 600; color: #333; margin: 20px 0 10px; }
+        .list-item { background: white; padding: 12px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid #667eea; }
+        .sentiment { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+        .sentiment-positive { background: #d4edda; color: #155724; }
+        .sentiment-neutral { background: #d1ecf1; color: #0c5460; }
+        .sentiment-negative { background: #f8d7da; color: #721c24; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-bottom: 20px; white-space: pre-wrap; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📧 Email Report Generator</h1>
+            <p class="subtitle">Get AI-powered insights from your Gmail inbox</p>
+            
+            <!-- Login Section -->
+            <div id="loginSection" class="login-section hidden">
+                <p style="margin-bottom: 20px;">Connect your Gmail account to get started</p>
+                <button class="btn" onclick="login()">Connect Gmail Account</button>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div id="dashboardSection" class="hidden">
+                <div class="user-info">
+                    <div>
+                        <span class="user-email" id="userEmail"></span>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            Last sync: <span id="lastSync">Never</span>
+                        </div>
+                    </div>
+                    <button class="btn logout-btn" onclick="logout()">Logout</button>
+                </div>
+                
+                <div class="report-controls">
+                    <div class="form-group">
+                        <label for="daysSelect">Analysis Period</label>
+                        <select id="daysSelect">
+                            <option value="1">Last 24 hours</option>
+                            <option value="3">Last 3 days</option>
+                            <option value="7" selected>Last 7 days</option>
+                            <option value="14">Last 14 days</option>
+                            <option value="30">Last 30 days</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn" onclick="generateReport()" id="generateBtn">Generate Report</button>
+                </div>
+                
+                <div id="loadingSection" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Analyzing your emails... This may take a minute.</p>
+                </div>
+                
+                <div id="errorSection" class="error hidden"></div>
+                
+                <div id="reportSection" class="report-section hidden">
+                    <div class="report-header">
+                        <h2 style="margin-bottom: 10px;">Email Analysis Report</h2>
+                        <div>
+                            <span class="stat">📨 Total Emails: <strong id="totalEmails">0</strong></span>
+                            <span class="stat">📅 Period: <strong id="periodDays">0</strong> days</span>
+                            <span class="stat">😊 Sentiment: <span id="sentimentBadge" class="sentiment sentiment-neutral">Neutral</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-body">
+                        <div class="summary">
+                            <h3 style="margin-bottom: 10px;">Executive Summary</h3>
+                            <p id="summaryText"></p>
+                        </div>
+                        
+                        <div class="section-title">🎯 Important Topics</div>
+                        <div id="topicsList"></div>
+                        
+                        <div class="section-title">✅ Action Items</div>
+                        <div id="actionsList"></div>
+                        
+                        <div class="section-title">👥 Key Contacts</div>
+                        <div id="contactsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '';
+
+        // Helpers
+        function show(el, on=true){ el.classList[on ? 'remove' : 'add']('hidden'); }
+        function setError(msg){
+            const e = document.getElementById('errorSection');
+            if (!msg) { show(e, false); e.textContent = ''; return; }
+            e.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2);
+            show(e, true);
+        }
+
+        // Check authentication status on load
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('status') === 'success') {
+                window.history.replaceState({}, document.title, '/');
+            }
+            await checkAuthStatus();
+        };
+        
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/user/status`, { credentials: 'include' });
+                const data = await response.json();
+                if (data.authenticated) {
+                    showDashboard(data);
+                } else {
+                    showLogin();
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                showLogin();
+            }
+        }
+        
+        function showLogin() {
+            show(document.getElementById('loginSection'), true);
+            show(document.getElementById('dashboardSection'), false);
+        }
+        
+        function showDashboard(userData) {
+            show(document.getElementById('loginSection'), false);
+            show(document.getElementById('dashboardSection'), true);
+            document.getElementById('userEmail').textContent = userData.email || '';
+            if (userData.last_sync) {
+                const lastSync = new Date(userData.last_sync);
+                document.getElementById('lastSync').textContent = lastSync.toLocaleString();
+            }
+        }
+        
+        async function login() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, { credentials: 'include' });
+                const data = await response.json();
+                if (data.auth_url) {
+                    window.location.href = data.auth_url;
+                } else {
+                    setError('Failed to get auth URL');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                setError('Failed to initiate login. Please try again.');
+            }
+        }
+        
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
+                window.location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                setError('Logout failed.');
+            }
+        }
+        
+        async function generateReport() {
+            const days = parseInt(document.getElementById('daysSelect').value, 10) || 7;
+            const generateBtn = document.getElementById('generateBtn');
+            
+            // Show loading, hide error and report
+            setError('');
+            show(document.getElementById('loadingSection'), true);
+            show(document.getElementById('reportSection'), false);
+            generateBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/generate-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ days })
+                });
+                const data = await response.json();
+
+                // IMPORTANT: our backend always returns 200 with success flag
+                if (!data?.success || !data?.report) {
+                    setError(data?.error?.details || data?.error || 'Report generation failed');
+                    return;
+                }
+
+                // Use data.report directly (not report.body)
+                displayReport(data.report);
+                
+            } catch (error) {
+                console.error('Error generating report:', error);
+                setError(error.message || String(error));
+            } finally {
+                show(document.getElementById('loadingSection'), false);
+                generateBtn.disabled = false;
+            }
+        }
+        
+        function displayReport(report) {
+            const r = report || {};
+
+            // Update stats (guarded)
+            document.getElementById('totalEmails').textContent = r.total_emails ?? 0;
+            document.getElementById('periodDays').textContent = r.period_days ?? 0;
+            
+            // Update sentiment (guarded + class swap)
+            const sentiment = (r.sentiment || 'neutral').toLowerCase();
+            const sentimentBadge = document.getElementById('sentimentBadge');
+            sentimentBadge.textContent = sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
+            sentimentBadge.className = `sentiment sentiment-${['positive','neutral','negative'].includes(sentiment) ? sentiment : 'neutral'}`;
+            
+            // Update summary
+            document.getElementById('summaryText').textContent = r.summary || 'No summary available.';
+            
+            // Update topics
+            const topicsList = document.getElementById('topicsList');
+            topicsList.innerHTML = '';
+            if (Array.isArray(r.important_topics) && r.important_topics.length) {
+                r.important_topics.forEach(topic => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.textContent = topic;
+                    topicsList.appendChild(div);
+                });
+            } else {
+                topicsList.innerHTML = '<div class="list-item">No topics identified.</div>';
+            }
+            
+            // Update action items
+            const actionsList = document.getElementById('actionsList');
+            actionsList.innerHTML = '';
+            if (Array.isArray(r.action_items) && r.action_items.length) {
+                r.action_items.forEach(action => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.textContent = action;
+                    actionsList.appendChild(div);
+                });
+            } else {
+                actionsList.innerHTML = '<div class="list-item">No action items found.</div>';
+            }
+            
+            // Update contacts
+            const contactsList = document.getElementById('contactsList');
+            contactsList.innerHTML = '';
+            if (Array.isArray(r.key_contacts) && r.key_contacts.length) {
+                r.key_contacts.forEach(contact => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.textContent = contact;
+                    contactsList.appendChild(div);
+                });
+            } else {
+                contactsList.innerHTML = '<div class="list-item">No key contacts identified.</div>';
+            }
+            
+            // Show report
+            show(document.getElementById('reportSection'), true);
+        }
+    </script>
+</body>
+</html>
